@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart MedBox Pro | Ayushi Sharma</title>
+    <style>
+        :root {
+            --bg-color: #0d0d0f;
+            --panel-bg: rgba(20, 20, 25, 0.8);
+            --key-border: rgba(255, 255, 255, 0.12);
+            --accent: #00ffcc;
+            --danger: #ff3b3b;
+            --success: #00ff66;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            background-image: radial-gradient(circle at 50% -20%, #1e1e2e 0%, #0d0d0f 80%);
+            color: #f5f5f7;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            margin: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh;
+        }
+
+        nav {
+            width: 100%; background: rgba(13, 13, 15, 0.85); backdrop-filter: blur(25px);
+            padding: 15px 0; display: flex; justify-content: center; gap: 20px;
+            border-bottom: 1px solid var(--key-border); position: sticky; top: 0; z-index: 1000;
+        }
+
+        nav a {
+            color: #86868b; text-decoration: none; font-size: 11px; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 1px; transition: 0.3s; cursor: pointer;
+        }
+
+        nav a:hover, nav a.active { color: #fff; text-shadow: 0 0 10px var(--accent); }
+
+        .container { display: none; width: 95%; max-width: 1050px; padding: 30px 0; flex-direction: column; }
+        .active-view { display: flex; animation: slideUp 0.5s ease; }
+
+        @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .panel { 
+            background: var(--panel-bg); backdrop-filter: blur(20px);
+            border: 1px solid var(--key-border); padding: 25px; border-radius: 20px;
+            margin-bottom: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        }
+
+        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+        .section {
+            background: #1a1a1e; border: 0.5px solid var(--key-border);
+            border-radius: 14px; padding: 20px; text-align: center;
+            position: relative; overflow: hidden; transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+        }
+        .section:hover, .section:focus-within {
+            transform: translateY(-6px);
+            box-shadow: 0 18px 40px rgba(0,0,0,0.5), 0 0 24px rgba(0,255,204,0.06);
+            border-color: rgba(255,255,255,0.22);
+        }
+        /* animated glow sweep for section borders */
+        .section::before {
+            content: ""; position: absolute; inset: -2px; border-radius: 16px;
+            background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.9) 50%, rgba(255,255,255,0) 100%);
+            background-size: 200% 100%; pointer-events: none; opacity: 0; transform: translateX(-50%);
+            transition: opacity 0.18s ease, transform 0.4s ease;
+            mix-blend-mode: screen;
+        }
+        .section:hover::before, .section:focus-within::before { opacity: 1; animation: borderSweep 2s linear infinite; }
+
+        @keyframes borderSweep { from { background-position: 0% 0%; } to { background-position: 200% 0%; } }
+
+        /* Make panel outlines glow on hover as well */
+        .panel::before {
+            content: ""; position: absolute; inset: 0; border-radius: 20px; padding: 1px; pointer-events: none;
+            background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.85) 50%, rgba(255,255,255,0) 100%);
+            background-size: 200% 100%; opacity: 0; transition: opacity 0.2s ease;
+            mix-blend-mode: screen;
+        }
+        .panel:hover::before, .panel:focus-within::before { opacity: 1; animation: borderSweep 2.2s linear infinite; }
+
+        .led { width: 10px; height: 10px; border-radius: 50%; margin: 0 auto 10px; }
+        .led-green { background: var(--success); box-shadow: 0 0 15px var(--success); }
+        .led-red { background: var(--danger); box-shadow: 0 0 15px var(--danger); }
+
+        h3 { margin-top: 0; color: var(--accent); font-size: 18px; }
+
+        input, select, button { 
+            width: 100%; padding: 12px; margin-top: 10px; border-radius: 8px; border: 1px solid #333;
+            background: rgba(0,0,0,0.5); color: #fff; font-size: 14px;
+        }
+
+        /* Mac-like key style for all buttons */
+        button {
+            background: linear-gradient(#fbfcfd, #e9ebec);
+            color: #0b0b0b;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1px solid rgba(255,255,255,0.85);
+            border-radius: 8px;
+            padding: 8px 12px;
+            box-shadow: 0 6px 0 rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.7);
+            transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+            font-family: -apple-system, 'SF Pro Text', BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+        button:active { transform: translateY(2px); box-shadow: 0 3px 0 rgba(0,0,0,0.2); }
+        button:hover { transform: translateY(-1px); box-shadow: 0 8px 0 rgba(0,0,0,0.28); }
+
+        /* Make special list buttons visually match keyboard keys but keep layout */
+        .def-btn { background: linear-gradient(#f7f8f9, #eaecec); border: 1px solid rgba(255,255,255,0.9); padding: 10px 12px; }
+        .opt-btn { background: linear-gradient(#fbfcfd, #eef0f1); border: 1px solid rgba(255,255,255,0.85); padding: 8px; }
+
+        /* Panel border with moving white light line */
+        .panel { 
+            position: relative;
+            background: var(--panel-bg); backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.10);
+            padding: 25px; border-radius: 20px;
+            margin-bottom: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        }
+        .panel::after {
+            content: "";
+            position: absolute;
+            left: 8px; right: 8px; top: -6px; height: 6px;
+            border-radius: 8px;
+            background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.95) 50%, rgba(255,255,255,0) 100%);
+            background-size: 200% 100%;
+            animation: lightMove 3s linear infinite;
+            pointer-events: none;
+        }
+        @keyframes lightMove { from { background-position: 0% 0%; } to { background-position: 200% 0%; } }
+
+        /* Health Sensor Styles */
+        .sensor-card { text-align: center; padding: 30px; }
+        .vitals-val { font-size: 48px; font-weight: 800; color: var(--accent); margin: 10px 0; }
+        .unit { font-size: 16px; color: #888; }
+
+        /* Deficiency Table */
+        .def-table { width: 100%; border-collapse: collapse; }
+        .def-table th, .def-table td { padding: 15px; border-bottom: 1px solid var(--key-border); text-align: left; }
+        .def-table th { color: var(--accent); }
+
+        #alarmBanner {
+            display: none; width: 100%; background: var(--danger); color: white; text-align: center;
+            padding: 15px; font-weight: bold; position: fixed; top: 0; left: 0; z-index: 2000;
+        }
+    /* Guide list styles */
+    .guide-wrap { display: flex; gap: 20px; align-items: flex-start; }
+    .guide-list { width: 38%; max-height: 62vh; overflow: auto; padding-right: 8px; }
+    .guide-detail { flex: 1; min-height: 200px; }
+    .def-item { margin-bottom: 8px; }
+    .def-btn { width: 100%; text-align: left; padding: 10px 12px; border-radius: 8px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.03); color: #ddd; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+    .def-btn:hover { background: rgba(0,255,204,0.03); }
+    .def-options { display: none; margin-top: 6px; gap: 8px; flex-direction: column; }
+    .opt-btn { padding: 8px; border-radius: 6px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.04); cursor: pointer; }
+    .opt-btn:hover { background: rgba(0,255,204,0.04); }
+    .def-expanded { margin-top: 8px; padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.45); border: 1px solid var(--key-border); color: #eaeaea; }
+    /* Make the 'Side effects' and 'Recommended cure' headings lighter */
+    .guide-detail h5, .def-expanded h5 {
+        font-weight: 300; /* lighter */
+        color: rgba(255,255,255,0.9);
+        font-size: 15px;
+        margin: 6px 0 8px 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        letter-spacing: 0.2px;
+    }
+    </style>
+</head>
+<body>
+
+<!-- Feedback floating button + modal -->
+<button id="feedbackBtn" title="Send feedback" aria-label="Send feedback" onclick="openFeedback()">Feedback</button>
+
+<div id="feedbackModal" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="fb-panel">
+        <button class="fb-close" aria-label="Close feedback form" onclick="closeFeedback()">✕</button>
+        <h3>Send Feedback</h3>
+        <form id="feedbackForm" method="POST" action="https://formspree.io/f/xdayoebq">
+            <label for="fb-name">Name</label>
+            <input id="fb-name" name="name" type="text" placeholder="Your name">
+
+            <label for="fb-email">Email</label>
+            <input id="fb-email" name="email" type="email" placeholder="you@example.com">
+
+            <label for="fb-message">Message</label>
+            <textarea id="fb-message" name="message" rows="5" placeholder="Tell us what you think..."></textarea>
+
+            <div style="display:flex; gap:8px; margin-top:10px;">
+                <button type="submit" class="def-btn">Send</button>
+                <button type="button" onclick="closeFeedback()" class="opt-btn">Cancel</button>
+            </div>
+            <div id="fb-status" role="status" aria-live="polite" style="margin-top:10px;color:var(--accent);display:none;"></div>
+        </form>
+    </div>
+</div>
+
+<div id="alarmBanner">
+    🔔 MEDICINE REMINDER ACTIVE 
+    <button onclick="medicationEvent('Taken')" onmouseover="speak('Confirm medication taken')">I'VE TAKEN IT</button>
+    <button onclick="medicationEvent('Skipped')" onmouseover="speak('Skip medication dose')">SKIP</button>
+</div>
+
+<nav id="mainNav">
+    <a onclick="showView('dashboard')" onmouseover="speak('Dashboard')">Dashboard</a>
+    <a onclick="showView('vitals')" onmouseover="speak('Vitals Sensor')">Health Sensors</a>
+    <a onclick="showView('guide')" onmouseover="speak('Deficiency Guide')">Medical Guide</a>
+    <a onclick="showView('history')" onmouseover="speak('History Log')">History</a>
+    <a onclick="showView('family')" onmouseover="speak('Family Settings')">Family Sync</a>
+</nav>
+
+<div id="dashboard" class="container active-view">
+    <div class="panel">
+        <div class="grid" id="sectionGrid"></div>
+    </div>
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+        <div class="panel">
+            <h3>Update Inventory</h3>
+            <select id="selIdx"></select>
+            <input type="text" id="newName" placeholder="Medicine Name">
+            <input type="number" id="newCount" placeholder="Count">
+            <button onclick="updateMed()" onmouseover="speak('Update medicine details')">Save Update</button>
+        </div>
+        <div class="panel">
+            <h3>Set Alarm</h3>
+            <input type="time" id="alarmTime">
+            <button onclick="setAlarm()" onmouseover="speak('Set medicine alarm')">Arm Alarm</button>
+        </div>
+    </div>
+</div>
+
+<div id="vitals" class="container">
+    <div class="grid">
+        <div class="panel sensor-card">
+            <h3>Heart Rate</h3>
+            <div class="vitals-val" id="bpm">--</div>
+            <div class="unit">BPM</div>
+            <button onclick="readSensor('bpm', 60, 100)" onmouseover="speak('Measure Heart Rate')">Scan BPM</button>
+        </div>
+        <div class="panel sensor-card">
+            <h3>Blood Pressure</h3>
+            <div class="vitals-val" id="bp">--</div>
+            <div class="unit">mmHg</div>
+            <button onclick="readSensor('bp', 110, 140)" onmouseover="speak('Measure Blood Pressure')">Scan BP</button>
+        </div>
+        <div class="panel sensor-card">
+            <h3>Body Temp</h3>
+            <div class="vitals-val" id="temp">--</div>
+            <div class="unit">°C</div>
+            <button onclick="readSensor('temp', 36, 38)" onmouseover="speak('Measure Temperature')">Scan Temp</button>
+        </div>
+    </div>
+</div>
+
+<div id="guide" class="container">
+    <div class="panel">
+        <h3>Clinical Deficiency Library</h3>
+        <div class="guide-wrap">
+            <div class="guide-list" id="defList" aria-label="Deficiency list"></div>
+            <div class="guide-detail" id="defDetail">
+                <h4 id="detailTitle">Select a deficiency or disease</h4>
+                <div id="detailContent">Click an item on the left, then choose <strong>Side effects</strong> or <strong>Recommended cure</strong>.</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="history" class="container"><div class="panel"><h3>Compliance Log</h3><table id="hTab" style="width:100%"><tbody id="historyBody"></tbody></table></div></div>
+<div id="family" class="container"><div class="panel" style="max-width:500px; margin:auto;"><h3>Family Contact</h3>
+    <input type="tel" id="fPhone" placeholder="Mobile Number">
+    <input type="email" id="fEmail" placeholder="Family email (optional)">
+    <input type="text" id="fApiKey" placeholder="Server API Key (optional)" title="If you run the local backend, set the API key here">
+    <div style="display:flex; gap:8px; margin-top:8px;">
+        <button onclick="syncContact()" onmouseover="speak('Save family contact')">Sync Contact</button>
+        <span id="familyStatus" style="color:var(--accent); align-self:center; font-size:13px;"></span>
+    </div>
+    <div style="margin-top:12px; color:#ccc; font-size:13px;">Server notifications: SMS will be sent via the backend when configured (Twilio).</div>
+</div></div>
+
+<script>
+    let inventory = [12, 5, 0, 8, 4, 1];
+    let names = ["Aspirin", "Vitamin D", "Asthma", "Omega 3", "Med 5", "Med 6"];
+    let audioCtx, melody;
+
+    // AI VOICE LOGIC
+    function speak(text) {
+        const msg = new SpeechSynthesisUtterance(text);
+        msg.rate = 1.1;
+        window.speechSynthesis.speak(msg);
+    }
+
+    function showView(id) {
+        window.speechSynthesis.cancel();
+        document.querySelectorAll('.container').forEach(c => c.classList.remove('active-view'));
+        document.getElementById(id).classList.add('active-view');
+        speak("Navigating to " + id);
+    }
+
+    function renderGrid() {
+        const grid = document.getElementById('sectionGrid');
+        grid.innerHTML = '';
+        for(let i=0; i<6; i++) {
+            grid.innerHTML += `<div class="section"><div class="led ${inventory[i]>0?'led-green':'led-red'}"></div><b style="color:var(--accent)">${names[i]}</b><br><small>QTY: ${inventory[i]}</small></div>`;
+        }
+    }
+
+    // HEALTH SENSOR SIMULATION
+    function readSensor(id, min, max) {
+        speak("Scanning vitals, please wait...");
+        let val = (Math.random() * (max - min) + min).toFixed(1);
+        if(id === 'bp') val = Math.floor(val) + "/" + (Math.floor(val)-40);
+        
+        setTimeout(() => {
+            document.getElementById(id).innerText = val;
+            speak("Measurement complete. Your " + id + " is " + val);
+        }, 1500);
+    }
+
+    function setAlarm() {
+        speak("Alarm armed. System will notify family of your status.");
+        setTimeout(() => {
+            document.getElementById('alarmBanner').style.display = 'block';
+            playMusic();
+        }, 2000);
+    }
+
+    function medicationEvent(status) {
+    document.getElementById('alarmBanner').style.display = 'none';
+    clearInterval(melody);
+    speak("Medication " + status + ". Notification sent to family.");
+    // log to history and notify family
+    const entry = { time: new Date().toISOString(), status: status };
+    addHistoryEntry(entry);
+    notifyFamily(entry);
+    }
+
+    function playMusic() {
+        if(!audioCtx) audioCtx = new AudioContext();
+        const n = [659, 622, 659, 622, 659, 493, 587, 523, 440];
+        let i = 0;
+        melody = setInterval(() => {
+            let o = audioCtx.createOscillator();
+            let g = audioCtx.createGain();
+            o.frequency.value = n[i];
+            g.gain.setValueAtTime(0.05, audioCtx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.5);
+            o.connect(g); g.connect(audioCtx.destination);
+            o.start(); o.stop(audioCtx.currentTime + 0.5);
+            i = (i + 1) % n.length;
+        }, 300);
+    }
+
+    function updateMed() {
+        const idx = document.getElementById('selIdx').value;
+        if(document.getElementById('newName').value) names[idx] = document.getElementById('newName').value;
+        if(document.getElementById('newCount').value) inventory[idx] = document.getElementById('newCount').value;
+        renderGrid();
+        speak("Medicine unit updated successfully.");
+    }
+
+    /* ===== History & Family sync ===== */
+    const STORAGE_KEYS = { family: 'smarthbox_family', history: 'smarthbox_history' };
+
+    function syncContact(){
+    const phone = document.getElementById('fPhone').value.trim();
+    const email = document.getElementById('fEmail').value.trim();
+    const apiKey = document.getElementById('fApiKey').value.trim();
+    const obj = { phone: phone || null, email: email || null, apiKey: apiKey || null };
+        localStorage.setItem(STORAGE_KEYS.family, JSON.stringify(obj));
+        document.getElementById('familyStatus').innerText = 'Saved';
+        setTimeout(()=> document.getElementById('familyStatus').innerText = '', 2000);
+        speak('Family contact saved');
+    }
+
+    function loadFamily(){
+        const raw = localStorage.getItem(STORAGE_KEYS.family);
+        if(!raw) return null;
+        try { return JSON.parse(raw); } catch(e){ return null; }
+    }
+
+    function getHistory(){
+        const raw = localStorage.getItem(STORAGE_KEYS.history);
+        if(!raw) return [];
+        try { return JSON.parse(raw); } catch(e){ return []; }
+    }
+
+    function saveHistory(arr){ localStorage.setItem(STORAGE_KEYS.history, JSON.stringify(arr)); }
+
+    function addHistoryEntry(entry){
+        const h = getHistory();
+        h.unshift(entry); // newest first
+        // keep last 200 entries
+        if(h.length > 200) h.length = 200;
+        saveHistory(h);
+        renderHistory();
+    }
+
+    function renderHistory(){
+        const body = document.getElementById('historyBody');
+        const h = getHistory();
+        body.innerHTML = '';
+        if(h.length === 0){ body.innerHTML = '<tr><td colspan="3">No history yet</td></tr>'; return; }
+        h.forEach(entry => {
+            const tr = document.createElement('tr');
+            const when = new Date(entry.time).toLocaleString();
+            tr.innerHTML = `<td style="width:180px">${when}</td><td>${entry.status}</td><td>${entry.note || ''}</td>`;
+            body.appendChild(tr);
+        });
+    }
+
+    function notifyFamily(entry){
+        const fam = loadFamily();
+        const when = new Date(entry.time).toLocaleString();
+        const subject = encodeURIComponent('Medication update from Smart MedBox');
+        const body = encodeURIComponent(`Patient has ${entry.status} medication on ${when}.`);
+        // If backend API key present, try server-side notify first
+        if(fam && fam.apiKey){
+            // POST to local backend /api/notify with apiKey header
+            fetch('/api/notify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-API-KEY': fam.apiKey },
+                body: JSON.stringify({ phone: fam.phone, email: fam.email, status: entry.status, time: entry.time })
+            }).then(r => {
+                if(!r.ok) throw new Error('server error');
+            }).catch(() => {
+                // fallback to client-side methods if backend fails
+                clientSideNotify();
+            });
+            return;
+        }
+
+        // fallback: client-side notify
+        clientSideNotify();
+
+        function clientSideNotify(){
+            // prefer Web Share API if available
+            if(navigator.share){
+                navigator.share({ title: 'Medication status', text: `Patient has ${entry.status} medication on ${when}.` }).catch(()=>{});
+            }
+
+            // mailto fallback if email is configured
+            if(fam && fam.email){
+                const mailto = `mailto:${fam.email}?subject=${subject}&body=${body}`;
+                const a = document.createElement('a'); a.href = mailto; a.style.display='none'; document.body.appendChild(a); a.click(); a.remove();
+            }
+
+            // sms fallback if phone is configured (may not work on desktop)
+            if(fam && fam.phone){
+                const smsBody = encodeURIComponent(`Patient has ${entry.status} medication on ${when}.`);
+                const smsLink = `sms:${fam.phone}?body=${smsBody}`;
+                const a2 = document.createElement('a'); a2.href = smsLink; a2.style.display='none'; document.body.appendChild(a2); a2.click(); a2.remove();
+            }
+        }
+    }
+
+    // initial render
+    (function(){
+        // restore family values into inputs
+        const fam = loadFamily();
+        if(fam){
+            if(fam.phone) document.getElementById('fPhone').value = fam.phone;
+            if(fam.email) document.getElementById('fEmail').value = fam.email;
+            if(fam.apiKey) document.getElementById('fApiKey').value = fam.apiKey;
+        }
+        renderHistory();
+    })();
+
+    const sel = document.getElementById('selIdx');
+    for(let i=0; i<6; i++) sel.innerHTML += `<option value="${i}">Unit ${i+1}</option>`;
+    renderGrid();
+
+    /* ===== GUIDE: 200 items list + detail view ===== */
+    const defListEl = document.getElementById('defList');
+    const defDetailTitle = document.getElementById('detailTitle');
+    const defDetailContent = document.getElementById('detailContent');
+
+    // Generate 200 condition names (mix of real and generic)
+    const conditionNames = [
+        "Vitamin A deficiency","Vitamin B1 (Thiamine) deficiency","Vitamin B2 (Riboflavin) deficiency",
+        "Vitamin B3 (Niacin) deficiency","Vitamin B5 (Pantothenic acid) deficiency","Vitamin B6 deficiency",
+        "Vitamin B7 (Biotin) deficiency","Vitamin B9 (Folate) deficiency","Vitamin B12 deficiency",
+        "Vitamin C deficiency (Scurvy)","Vitamin D deficiency","Vitamin E deficiency","Vitamin K deficiency",
+        "Iron deficiency (Anemia)","Calcium deficiency","Magnesium deficiency","Zinc deficiency",
+        "Iodine deficiency","Selenium deficiency","Potassium deficiency","Sodium imbalance",
+        "Protein-energy malnutrition","Obesity","Type 1 Diabetes","Type 2 Diabetes","Hypertension",
+        "Coronary artery disease","Heart failure","Arrhythmia","Stroke","Transient ischemic attack",
+        "Asthma","COPD","Pneumonia","Bronchitis","Tuberculosis","Influenza",
+        "COVID-19","Malaria","Dengue fever","Hepatitis A","Hepatitis B","Hepatitis C",
+        "HIV/AIDS","Chronic kidney disease","Liver cirrhosis","Pancreatitis","GERD",
+        "Peptic ulcer disease","Gastritis","Irritable bowel syndrome","Crohn's disease","Ulcerative colitis",
+        "Celiac disease","Lactose intolerance","Gallstones","Pancreatic insufficiency","Hypothyroidism",
+        "Hyperthyroidism","Goiter","Hashimoto's thyroiditis","Graves' disease","Polycystic ovary syndrome",
+        "Endometriosis","Menopause-related symptoms","Infertility","Erectile dysfunction","Osteoporosis",
+        "Osteopenia","Rheumatoid arthritis","Osteoarthritis","Gout","Scleroderma","Lupus",
+        "Psoriasis","Eczema","Acne","Rosacea","Dermatitis","Melanoma","Basal cell carcinoma",
+        "Squamous cell carcinoma","Breast cancer","Lung cancer","Colon cancer","Prostate cancer",
+        "Leukemia","Lymphoma","Multiple myeloma","Migraine","Tension headache","Cluster headache",
+        "Depression","Anxiety disorders","Panic disorder","Bipolar disorder","Schizophrenia","Insomnia",
+        "Sleep apnea","Restless legs syndrome","Peripheral neuropathy","Carpal tunnel syndrome","Bell's palsy",
+        "Parkinson's disease","Alzheimer's disease","Dementia","Multiple sclerosis","Stroke-related disability",
+        "Autism spectrum disorder","Attention deficit hyperactivity disorder","Schizoid personality disorder",
+        "Substance use disorder","Alcohol use disorder","Nicotine dependence","Chronic fatigue syndrome",
+        "Fibromyalgia","Chronic pain","Back pain","Sciatica","Herniated disc","Scoliosis","Fracture",
+        "Sprain and strain","Burn injury","Sunburn","Skin infection","Cellulitis","Impetigo","Athlete's foot",
+        "Urinary tract infection","Pyelonephritis","Prostatitis","Benign prostatic hyperplasia","Urinary incontinence",
+        "Endocrine disorders","Cushing's syndrome","Addison's disease","Adrenal insufficiency","Pneumothorax",
+        "Deep vein thrombosis","Pulmonary embolism","Anaphylaxis","Allergic rhinitis","Food allergy","Contact allergy",
+        "Anorexia nervosa","Bulimia nervosa","Binge-eating disorder","Vitamin B3 deficiency (Pellagra)",
+        "Beriberi","Night blindness","Xerophthalmia","Scurvy (repeated)","Rickets","Scurvy-like symptoms",
+        "Bronchiectasis","Interstitial lung disease","Pulmonary fibrosis","Sarcoidosis","Bronchiolitis obliterans",
+        "Cholangitis","Cholecystitis","Hemorrhoids","Anal fissure","Perianal abscess","Appendicitis",
+        "Glaucoma","Cataract","Macular degeneration","Conjunctivitis","Otitis media","Tinnitus",
+        "Hearing loss","Vertigo","Meniere's disease","Sepsis","Septic shock","Systemic inflammatory response syndrome",
+        "Rheumatic fever","Endocarditis","Pericarditis","Myocarditis","Valvular disease","Congenital heart disease",
+        "Dermatomyositis","Polymyositis","Myasthenia gravis","Guillain-Barre syndrome","Amyotrophic lateral sclerosis",
+        "Rare metabolic disorder 1","Rare metabolic disorder 2","Rare metabolic disorder 3","Condition 196","Condition 197",
+        "Condition 198","Condition 199","Condition 200"
+    ];
+
+    // Simple generator for side effects and cures; real data can be replaced per-item.
+    function generateInfo(name) {
+        // richer heuristics for many common items; non-prescriptive, informational only
+        const lower = name.toLowerCase();
+        let side = [];
+        let cure = [];
+
+        // Vitamin-specific
+        if(lower.includes('vitamin')) {
+            side = ['Fatigue', 'Muscle weakness', 'Specific deficiency signs depending on vitamin'];
+            if(lower.includes('vitamin d')) {
+                cure = [
+                    'Safe sun exposure (short daily periods depending on skin type)',
+                    'Dietary sources: fatty fish (salmon, mackerel), fortified dairy/plant milks, egg yolks',
+                    'Oral vitamin D supplementation if deficient (as advised by a clinician)',
+                    'Weight-bearing exercise and fall-prevention for bone health',
+                    'Monitor 25(OH)D levels and follow clinician dosing'
+                ];
+            } else if(lower.includes('b12') || lower.includes('b12 deficiency')) {
+                cure = [
+                    'Dietary sources: meat, fish, dairy, fortified cereals',
+                    'Oral or intramuscular B12 supplementation when indicated',
+                    'Investigate causes (malabsorption, pernicious anemia, medication effects)',
+                    'Regular monitoring of B12 and hematologic indices'
+                ];
+            } else if(lower.includes('vitamin c') || lower.includes('scurvy')) {
+                cure = [
+                    'Increase intake of citrus fruits, bell peppers, tomatoes, kiwi',
+                    'Dietary supplementation when needed under guidance',
+                    'Address poor nutrition and alcohol use if present'
+                ];
+            } else {
+                cure = [
+                    'Improve dietary intake of the specific vitamin through whole foods',
+                    'Consider clinical testing and guided supplementation',
+                    'Address underlying causes of malabsorption or poor intake'
+                ];
+            }
+
+        // Iron deficiency
+        } else if(lower.includes('iron') || lower.includes('anemia')) {
+            side = ['Pallor', 'Fatigue', 'Shortness of breath on exertion', 'Dizziness', 'Brittle nails'];
+            cure = [
+                'Iron-rich foods: red meat, liver (if not contraindicated), shellfish, legumes, lentils, tofu, dark leafy greens, beetroot, pomegranate',
+                'Pair iron-rich plant foods with vitamin C sources (citrus, bell peppers) to enhance absorption',
+                'Avoid tea/coffee with iron-containing meals (tannins inhibit absorption)',
+                'Oral iron supplementation (ferrous sulfate/fumarate) under clinician supervision',
+                'Investigate and treat sources of blood loss (e.g., GI bleeding, heavy menstruation)',
+                'Intravenous iron or transfusion for severe or refractory cases as advised by specialists',
+                'Follow-up blood tests to monitor response'
+            ];
+
+        // Calcium / bone health
+        } else if(lower.includes('calcium') || lower.includes('osteoporosis') || lower.includes('osteopenia')) {
+            side = ['Bone pain', 'Increased fracture risk', 'Muscle cramps'];
+            cure = [
+                'Dietary calcium: dairy products, fortified plant milks, tofu, leafy greens',
+                'Ensure adequate vitamin D to aid calcium absorption',
+                'Weight-bearing and muscle-strengthening exercise',
+                'Lifestyle: smoking cessation, limit excessive alcohol',
+                'Pharmacologic therapies when indicated (bisphosphonates, others) guided by clinician'
+            ];
+
+        // Diabetes
+        } else if(lower.includes('diabetes')) {
+            side = ['Polyuria', 'Polydipsia', 'Fatigue', 'Blurred vision', 'Slow wound healing'];
+            cure = [
+                'Individualized dietary plan and carbohydrate management',
+                'Regular physical activity and weight management',
+                'Blood glucose monitoring (self-monitoring/HbA1c) and targets set with clinician',
+                'Medications including metformin, other oral agents, or insulin as prescribed',
+                'Manage cardiovascular risk factors and regular screening for complications'
+            ];
+
+        // Hypertension
+        } else if(lower.includes('hypertension') || lower.includes('blood pressure')) {
+            side = ['Often asymptomatic; severe cases may cause headache, visual changes'];
+            cure = [
+                'Lifestyle: DASH-style diet, reduce sodium intake, increase fruits/vegetables',
+                'Regular aerobic exercise and weight loss when appropriate',
+                'Limit alcohol and stop smoking',
+                'Home blood pressure monitoring and adherence to prescribed antihypertensive medications',
+                'Treat comorbidities and follow-up with clinician for medication adjustments'
+            ];
+
+        // Mental health (depression/anxiety)
+        } else if(lower.includes('depression') || lower.includes('anxiety') || lower.includes('panic') || lower.includes('bipolar')) {
+            side = ['Mood changes', 'Sleep disturbance', 'Appetite or energy changes', 'Concentration problems'];
+            cure = [
+                'Psychotherapy (e.g., CBT) with a qualified therapist',
+                'Medications when indicated (SSRIs, SNRIs, mood stabilizers) prescribed and monitored by clinicians',
+                'Regular physical activity, structured sleep, and social support',
+                'Crisis plans for severe symptoms and emergency help if suicidal ideation occurs'
+            ];
+
+        // Respiratory conditions
+        } else if(lower.includes('asthma')) {
+            side = ['Wheezing', 'Shortness of breath', 'Cough'];
+            cure = [
+                'Inhaled short-acting bronchodilators for relief of symptoms',
+                'Inhaled corticosteroids or combination inhalers for control',
+                'Avoid triggers, have an asthma action plan, and regular review with clinician'
+            ];
+        } else if(lower.includes('copd')) {
+            side = ['Chronic cough', 'Sputum production', 'Exertional breathlessness'];
+            cure = [
+                'Smoking cessation (most important intervention)',
+                'Bronchodilator therapies, pulmonary rehabilitation, vaccinations',
+                'Oxygen or other therapies for advanced disease as directed by specialists'
+            ];
+
+        // Infections (general)
+        } else if(lower.includes('infection') || lower.includes('pneumonia') || lower.includes('hepatitis') || lower.includes('covid') || lower.includes('malaria') || lower.includes('dengue')) {
+            side = ['Fever', 'Malaise', 'Site-specific symptoms'];
+            cure = [
+                'Seek medical assessment to determine cause (viral, bacterial, parasitic)',
+                'Targeted antimicrobial/antiviral/antiparasitic treatment when indicated',
+                'Supportive care: hydration, rest, antipyretics for fever',
+                'Prevention: vaccination where available, vector control, hygiene measures'
+            ];
+
+        // Thyroid
+        } else if(lower.includes('hypothyroid') || lower.includes('hypothyroidism')) {
+            side = ['Fatigue', 'Weight gain', 'Cold intolerance', 'Constipation'];
+            cure = [
+                'Thyroid hormone replacement (levothyroxine) under medical supervision',
+                'Regular monitoring of TSH and dose adjustments',
+                'Address contributing factors such as iodine deficiency if relevant'
+            ];
+        } else if(lower.includes('hyperthyroid') || lower.includes('hyperthyroidism')) {
+            side = ['Weight loss', 'Heat intolerance', 'Palpitations', 'Anxiety'];
+            cure = [
+                'Anti-thyroid medications, radioactive iodine, or surgery depending on cause',
+                'Symptom control (beta-blockers) and specialist follow-up'
+            ];
+
+        // Kidney / Liver / Cardiac disease
+        } else if(lower.includes('kidney') || lower.includes('renal')) {
+            side = ['Fatigue', 'Edema', 'Changes in urine output', 'Electrolyte disturbances'];
+            cure = [
+                'Manage underlying causes (diabetes, hypertension)',
+                'Dietary modifications (as advised by renal dietitian) and fluid management',
+                'Medications to slow progression; dialysis or transplant in advanced disease'
+            ];
+        } else if(lower.includes('liver') || lower.includes('cirrhosis')) {
+            side = ['Jaundice', 'Fatigue', 'Abdominal swelling'];
+            cure = [
+                'Treat underlying cause (viral hepatitis, alcohol-related)',
+                'Avoid hepatotoxins, maintain nutrition, and specialist follow-up',
+                'Management of complications and transplant evaluation when indicated'
+            ];
+
+        // Musculoskeletal
+        } else if(lower.includes('arthritis') || lower.includes('osteoarthritis') || lower.includes('rheumatoid')) {
+            side = ['Joint pain', 'Stiffness', 'Reduced range of motion'];
+            cure = [
+                'Exercise, weight management, and physical therapy',
+                'Analgesics and anti-inflammatory medications as advised',
+                'Disease-modifying therapies for inflammatory arthritis under specialist care'
+            ];
+
+        // Cancer (general supportive guidance)
+        } else if(lower.includes('cancer') || lower.includes('leukemia') || lower.includes('lymphoma') || lower.includes('melanoma')) {
+            side = ['Depends on cancer type; may include pain, fatigue, organ-specific symptoms'];
+            cure = [
+                'Multidisciplinary oncology assessment (surgery, chemotherapy, radiotherapy, targeted therapies)',
+                'Supportive care and symptom management, nutrition, psychosocial support',
+                'Follow evidence-based protocols and specialist recommendations'
+            ];
+
+        // Default fallback guidance
+        } else {
+            side = ['Symptoms vary; see clinical evaluation for specifics.'];
+            cure = [
+                'Seek evidence-based clinical evaluation to confirm diagnosis',
+                'Supportive measures: adequate hydration, balanced nutrition, rest',
+                'Condition-specific treatments as recommended by qualified healthcare professionals'
+            ];
+        }
+
+        // return structured info
+        return { sideEffects: side, cures: cure };
+    }
+
+    const dataStore = {};
+    conditionNames.forEach(name => { dataStore[name] = generateInfo(name); });
+
+    // Ensure every condition has simple, actionable cures when generateInfo returned a generic or empty list.
+    function generateSimpleCures(name) {
+        const lower = name.toLowerCase();
+        if(lower.includes('iron') || lower.includes('anemia')) {
+            return ['Eat iron-rich foods: beetroot, pomegranate, spinach, lentils', 'Pair plant-based iron with vitamin C (citrus, lemon, bell peppers)', 'Speak with a clinician about oral iron supplements if needed', 'Avoid tea/coffee with meals to improve absorption'];
+        }
+        if(lower.includes('vitamin') || lower.includes('scurvy') || lower.includes('rickets')) {
+            return ['Increase targeted foods (e.g., citrus/peppers for vitamin C, fatty fish/fortified milk for vitamin D)', 'Consider supplementation after clinician testing', 'Improve overall dietary variety and address absorption issues'];
+        }
+        if(lower.includes('calcium') || lower.includes('osteoporosis') || lower.includes('osteopenia')) {
+            return ['Include dairy or fortified plant milks, leafy greens; ensure vitamin D sufficiency', 'Weight-bearing exercise and fall prevention', 'Discuss supplements and bone-protective medications with clinician if at risk'];
+        }
+        if(lower.includes('diabetes')) {
+            return ['Control carbohydrate intake and follow an individualized meal plan', 'Increase physical activity and aim for gradual weight loss if advised', 'Monitor blood glucose and follow clinician treatment plan'];
+        }
+        if(lower.includes('hypertension') || lower.includes('blood pressure')) {
+            return ['Reduce salt intake and follow a DASH-style diet', 'Regular aerobic exercise and weight management', 'Monitor BP at home and adhere to prescribed meds'];
+        }
+        if(lower.includes('infection') || lower.includes('pneumonia') || lower.includes('covid') || lower.includes('hepatitis') || lower.includes('malaria') || lower.includes('dengue')) {
+            return ['Seek medical assessment to determine cause and receive targeted treatment', 'Stay hydrated and rest', 'Follow prevention measures (vaccination, hygiene, vector control)'];
+        }
+        if(lower.includes('cancer') || lower.includes('leukemia') || lower.includes('lymphoma') || lower.includes('melanoma')) {
+            return ['Seek specialist oncology assessment for staging and treatment options', 'Supportive care for symptoms, nutrition and psychosocial support', 'Follow evidence-based therapies under clinician guidance'];
+        }
+        if(lower.includes('depression') || lower.includes('anxiety') || lower.includes('panic') || lower.includes('bipolar') || lower.includes('schizophrenia')) {
+            return ['Engage in psychotherapy (e.g., CBT) and social support', 'Maintain regular sleep, exercise and routine', 'Discuss medication options with a mental health professional when appropriate'];
+        }
+        if(lower.includes('asthma') || lower.includes('copd') || lower.includes('bronchiectasis')) {
+            return ['Avoid triggers and follow inhaler/therapy plan as prescribed', 'Consider pulmonary rehabilitation and vaccinations', 'Seek urgent care for severe breathing problems'];
+        }
+        if(lower.includes('thyroid') || lower.includes('goiter') || lower.includes('hashimoto') || lower.includes('graves')) {
+            return ['Obtain thyroid function tests and follow replacement or antithyroid therapy as directed', 'Regular monitoring and specialist follow-up'];
+        }
+        if(lower.includes('kidney') || lower.includes('renal') || lower.includes('liver') || lower.includes('cirrhosis')) {
+            return ['Manage underlying causes (control blood pressure/diabetes or avoid hepatotoxins)', 'Follow dietary guidance from renal/hepatic specialists', 'Specialist follow-up for progressive disease'];
+        }
+        if(lower.includes('arthritis') || lower.includes('osteoporosis') || lower.includes('gout')) {
+            return ['Exercise and weight management, joint protection', 'Medications for flare control and disease-modifying therapies when indicated', 'Dietary measures (e.g., hydration and limit high-purine foods for gout)'];
+        }
+        // default simple set
+        return ['Maintain hydration and balanced diet', 'Rest and avoid aggravating activities', 'Seek medical evaluation for a condition-specific plan'];
+    }
+
+    conditionNames.forEach(name => {
+        const cures = dataStore[name] && dataStore[name].cures ? dataStore[name].cures : [];
+        const needsReplacement = cures.length === 0 || cures.some(s => (typeof s === 'string' && (s.toLowerCase().includes('evidence-based') || s.toLowerCase().includes('supportive') || s.toLowerCase().includes('clinical evaluation') )) );
+        if(needsReplacement) dataStore[name].cures = generateSimpleCures(name);
+    });
+
+    function populateDefList() {
+        defListEl.innerHTML = '';
+        conditionNames.forEach((name, idx) => {
+            const item = document.createElement('div');
+            item.className = 'def-item';
+            item.innerHTML = `
+                <button class="def-btn" data-name="${name}">
+                    <span class="def-name">${idx+1}. ${name}</span>
+                    <span class="caret">▸</span>
+                </button>
+                <div class="def-options" aria-hidden="true">
+                    <button class="opt-btn" data-name="${name}" data-type="side">Side effects</button>
+                    <button class="opt-btn" data-name="${name}" data-type="cure">Recommended cure</button>
+                </div>
+            `;
+            defListEl.appendChild(item);
+        });
+
+        // attach listeners
+        defListEl.querySelectorAll('.def-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const parent = btn.parentElement;
+                const options = parent.querySelector('.def-options');
+                const open = options.getAttribute('aria-hidden') === 'false';
+                // close any open
+                defListEl.querySelectorAll('.def-options').forEach(o => { o.style.display = 'none'; o.setAttribute('aria-hidden', 'true'); });
+                defListEl.querySelectorAll('.def-btn .caret').forEach(c => c.textContent = '▸');
+                if(!open) { options.style.display = 'flex'; options.setAttribute('aria-hidden', 'false'); btn.querySelector('.caret').textContent = '▾'; }
+            });
+        });
+
+        defListEl.querySelectorAll('.opt-btn').forEach(ob => {
+            ob.addEventListener('click', (e) => {
+                const name = ob.getAttribute('data-name');
+                const type = ob.getAttribute('data-type');
+                // show in right detail pane
+                showDetail(name, type);
+
+                // render inline under the clicked item
+                const item = ob.closest('.def-item');
+                // remove other inline expansions
+                defListEl.querySelectorAll('.def-expanded').forEach(d => { if(d !== item.querySelector('.def-expanded')) d.remove(); });
+
+                const info = dataStore[name] || generateInfo(name);
+                const html = renderInfoHTML(info, type);
+                let expanded = item.querySelector('.def-expanded');
+                if(!expanded) { expanded = document.createElement('div'); expanded.className = 'def-expanded'; item.appendChild(expanded); }
+                expanded.innerHTML = html;
+
+                // ensure the clicked item is visible
+                ob.scrollIntoView({behavior:'smooth', block:'center'});
+            });
+        });
+    }
+
+    function showDetail(name, type) {
+        defDetailTitle.innerText = name;
+        const info = dataStore[name] || generateInfo(name);
+        defDetailContent.innerHTML = renderInfoHTML(info, type);
+    }
+
+    function renderInfoHTML(info, type) {
+        if(type === 'side') {
+            return '<h5>Side effects / Symptoms</h5><ul>' + info.sideEffects.map(s=>`<li>${s}</li>`).join('') + '</ul>';
+        } else {
+            return '<h5>Recommended cure / Management</h5><ul>' + info.cures.map(s=>`<li>${s}</li>`).join('') + '</ul>';
+        }
+    }
+
+    // Initialize list and default styles
+    populateDefList();
+
+    /* ===== Feedback button & form handling ===== */
+    // create styles for feedback button/modal
+    const fbStyles = document.createElement('style');
+    fbStyles.innerHTML = `
+    #feedbackBtn{
+        position: fixed; right: 20px; bottom: 20px; z-index: 3000; padding: 12px 14px; border-radius: 999px;
+        background: linear-gradient(135deg, #00ffcc, #00b3ff); color:#001; font-weight:700; border:none; cursor:pointer;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.5); backdrop-filter: blur(6px);
+    }
+    #feedbackModal{ display:none; position: fixed; inset:0; background: rgba(0,0,0,0.55); z-index:3100; align-items:center; justify-content:center; }
+    #feedbackModal[aria-hidden="false"]{ display:flex; }
+    .fb-panel{ background: linear-gradient(180deg,#0f1113,#0b0b0d); border-radius:12px; padding:18px; width: 360px; max-width:calc(100% - 40px); box-shadow: 0 30px 60px rgba(0,0,0,0.6); border:1px solid rgba(255,255,255,0.06); color:#eaeaea; position:relative; }
+    .fb-panel h3{ margin:0 0 8px 0; color:var(--accent); }
+    .fb-panel label{ display:block; font-size:13px; color:#bbb; margin-top:8px; }
+    .fb-panel input, .fb-panel textarea{ width:100%; padding:10px; margin-top:6px; border-radius:8px; border:1px solid rgba(255,255,255,0.06); background:rgba(255,255,255,0.02); color:#fff; }
+    .fb-close{ position:absolute; right:8px; top:8px; background:transparent; border:none; color:#bbb; font-size:16px; cursor:pointer; }
+    `;
+    document.head.appendChild(fbStyles);
+
+    // wire up modal open/close
+    function openFeedback(){
+        const m = document.getElementById('feedbackModal');
+        m.setAttribute('aria-hidden','false');
+        document.getElementById('fb-status').style.display='none';
+        document.getElementById('fb-message').value='';
+        document.getElementById('fb-name').value='';
+        document.getElementById('fb-email').value='';
+    }
+    function closeFeedback(){
+        const m = document.getElementById('feedbackModal');
+        m.setAttribute('aria-hidden','true');
+    }
+
+    // attach to global scope so inline onclick works
+    window.openFeedback = openFeedback;
+    window.closeFeedback = closeFeedback;
+
+    // submit handler: use fetch to Formspree endpoint
+    const fbForm = document.getElementById('feedbackForm');
+    fbForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const statusEl = document.getElementById('fb-status');
+        statusEl.style.display = 'block'; statusEl.style.color = 'var(--accent)'; statusEl.textContent = 'Sending...';
+
+        const formData = new FormData(fbForm);
+
+        try {
+            const res = await fetch(fbForm.action, { method: 'POST', body: formData, headers: { 'Accept': 'application/json' } });
+            if(res.ok){
+                statusEl.style.color = 'var(--success)';
+                statusEl.textContent = 'Thanks — feedback sent.';
+                fbForm.reset();
+                setTimeout(closeFeedback, 1400);
+            } else {
+                const data = await res.json().catch(()=>null);
+                statusEl.style.color = 'var(--danger)';
+                statusEl.textContent = data && data.error ? data.error : 'Could not send feedback. Please try again.';
+            }
+        } catch(err){
+            statusEl.style.color = 'var(--danger)';
+            statusEl.textContent = 'Network error. Please check your connection.';
+        }
+    });
+
+    
+</script>
+</body>
+</html>
